@@ -1,5 +1,5 @@
 fastapi[standard]
 pyjwt[crypto]
 supabase
-rembg[cpu]
+rembg[cpu,cli]
 pillow
