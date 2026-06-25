@@ -16,4 +16,4 @@ jobs:
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push https://crbns:$HF_TOKEN@huggingface.co/spaces/crbns/drestly-image-processing main
+        run: git push https://crbns:$HF_TOKEN@huggingface.co/spaces/crbns/drestly-image-processing master:main
