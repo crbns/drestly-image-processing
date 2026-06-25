@@ -1,0 +1,5 @@
+fastapi[standard]
+pyjwt[crypto]
+supabase
+rembg[cpu]
+pillow
