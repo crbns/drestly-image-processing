@@ -69,13 +69,13 @@ def run_cutout(item_id: str, user_id: str):
         img = Image.open(BytesIO(original_bytes))
         out = remove(img, session=state["session"])
         buf = BytesIO()
-        out.save(buf, format="PNG")
+        out.save(buf, format="WEBP", quality=80, method=6)
 
         cutout_path = f"{user_id}/{item_id}.png"
         sb.storage.from_(CUTOUTS).upload(
             cutout_path,
             buf.getvalue(),
-            file_options={"content-type": "image/png", "upsert": "true"},
+            file_options={"content-type": "image/webp", "upsert": "true"},
         )
 
         buf.close()
@@ -94,3 +94,9 @@ def run_cutout(item_id: str, user_id: str):
                 "error": str(e)[:500],
             }
         ).eq("id", item_id).execute()
+        return
+
+    try:
+        sb.storage.from_(ORIGINALS).remove([original_path])
+    except Exception:
+        pass
