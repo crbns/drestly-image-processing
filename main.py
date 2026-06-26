@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from io import BytesIO
+import asyncio
 
 from fastapi import FastAPI, BackgroundTasks, Depends
 from pydantic import BaseModel
@@ -16,6 +17,7 @@ ORIGINALS = "originals"
 CUTOUTS = "cutouts"
 
 state: dict = {}
+INFERENCE_SLOTS = asyncio.Semaphore(2)
 
 
 @asynccontextmanager
@@ -48,55 +50,56 @@ def process(
     return {"status": "processing", "item_id": req.item_id}
 
 
-def run_cutout(item_id: str, user_id: str):
-    sb: Client = state["supabase"]
+async def run_cutout(item_id: str, user_id: str):
+    async with INFERENCE_SLOTS:
+        sb: Client = state["supabase"]
 
-    # Service key bypasses RLS, so confirm ownership ourselves before touching anything.
-    row = (
-        sb.table("clothing_items")
-        .select("user_id, original_path")
-        .eq("id", item_id)
-        .single()
-        .execute()
-    )
-    if not row.data or row.data["user_id"] != user_id:
-        return
-
-    original_path = row.data["original_path"]
-    try:
-        original_bytes = sb.storage.from_(ORIGINALS).download(original_path)
-
-        img = Image.open(BytesIO(original_bytes))
-        out = remove(img, session=state["session"])
-        buf = BytesIO()
-        out.save(buf, format="WEBP", quality=80, method=6)
-
-        cutout_path = f"{user_id}/{item_id}.png"
-        sb.storage.from_(CUTOUTS).upload(
-            cutout_path,
-            buf.getvalue(),
-            file_options={"content-type": "image/webp", "upsert": "true"},
+        # Service key bypasses RLS, so confirm ownership ourselves before touching anything.
+        row = (
+            sb.table("clothing_items")
+            .select("user_id, original_path")
+            .eq("id", item_id)
+            .single()
+            .execute()
         )
+        if not row.data or row.data["user_id"] != user_id:
+            return
 
-        buf.close()
+        original_path = row.data["original_path"]
+        try:
+            original_bytes = sb.storage.from_(ORIGINALS).download(original_path)
 
-        sb.table("clothing_items").update(
-            {
-                "status": "done",
-                "cutout_path": cutout_path,
-            }
-        ).eq("id", item_id).execute()
+            img = Image.open(BytesIO(original_bytes))
+            out = remove(img, session=state["session"])
+            buf = BytesIO()
+            out.save(buf, format="WEBP", quality=80, method=6)
 
-    except Exception as e:
-        sb.table("clothing_items").update(
-            {
-                "status": "failed",
-                "error": str(e)[:500],
-            }
-        ).eq("id", item_id).execute()
-        return
+            cutout_path = f"{user_id}/{item_id}.png"
+            sb.storage.from_(CUTOUTS).upload(
+                cutout_path,
+                buf.getvalue(),
+                file_options={"content-type": "image/webp", "upsert": "true"},
+            )
 
-    try:
-        sb.storage.from_(ORIGINALS).remove([original_path])
-    except Exception:
-        pass
+            buf.close()
+
+            sb.table("clothing_items").update(
+                {
+                    "status": "done",
+                    "cutout_path": cutout_path,
+                }
+            ).eq("id", item_id).execute()
+
+        except Exception as e:
+            sb.table("clothing_items").update(
+                {
+                    "status": "failed",
+                    "error": str(e)[:500],
+                }
+            ).eq("id", item_id).execute()
+            return
+
+        try:
+            sb.storage.from_(ORIGINALS).remove([original_path])
+        except Exception:
+            pass
