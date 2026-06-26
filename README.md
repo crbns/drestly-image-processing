@@ -1,8 +1,8 @@
 ---
 title: Image Processing
 emoji: 👕
-colorFrom: indigo
-colorTo: purple
+colorFrom: red
+colorTo: orange
 sdk: docker
 app_port: 7860
 ---
@@ -30,8 +30,6 @@ owns the `clothing_items` row, then runs the cutout in a background task.
 | --------------------- | ----------------------------------------------------- |
 | `SUPABASE_URL`        | Supabase project URL (also used for JWKS auth).       |
 | `SUPABASE_SECRET_KEY` | Service-role key — bypasses RLS, ownership checked in code. |
-
-Set these as **Secrets** in the Space settings.
 
 ## Running locally
 
