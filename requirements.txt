@@ -3,3 +3,7 @@ pyjwt[crypto]
 supabase
 rembg[cpu,cli]
 pillow
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-system-metrics
